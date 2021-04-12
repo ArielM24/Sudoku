@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sudoku/src/Puzzle.dart';
 import 'package:sudoku/src/models/PuzzleOptions.dart';
-import 'package:sudoku/src/logic/GridUtils.dart';
+import 'package:sudoku/src/gui/Sudoku.dart';
 
 class GamePage extends StatefulWidget {
   final int difficulty;
@@ -14,13 +14,18 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   int difficulty;
   Puzzle sudoku;
+  bool generated = false;
+  Future<bool> boardGenerated;
   _GamePageState(this.difficulty);
   @override
   void initState() {
     super.initState();
-    var options = PuzzleOptions(patternName: "random");
-    sudoku = Puzzle(options);
-    sudoku.generate();
+    if (!generated) {
+      var options = PuzzleOptions(patternName: "random");
+      sudoku = Puzzle(options);
+      generated = true;
+      boardGenerated = sudoku.generate();
+    }
   }
 
   @override
@@ -37,26 +42,36 @@ class _GamePageState extends State<GamePage> {
         diff = "Difícil";
         break;
     }
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.menu),
-          onPressed: () {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          },
-        ),
-        title: Text(diff),
-        actions: [IconButton(icon: Icon(Icons.check), onPressed: () {})],
-      ),
-      body: _body(),
-    );
+    return FutureBuilder(
+        future: boardGenerated,
+        builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+          Widget child;
+          if (snapshot.hasData) {
+            child = Sudoku(
+              sudoku: sudoku,
+            );
+          } else if (snapshot.hasError) {
+            child = Text("Error");
+          } else {
+            child = SizedBox(
+              width: 60,
+              height: 60,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: Icon(Icons.menu),
+                onPressed: () {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+              ),
+              title: Text(diff),
+              actions: [IconButton(icon: Icon(Icons.check), onPressed: () {})],
+            ),
+            body: child,
+          );
+        });
   }
-
-  Widget _body() {
-    return Center(
-      child: Text("${stringGrid(sudoku.board())}"),
-    );
-  }
-
-  Widget sudokuBoard() {}
 }
